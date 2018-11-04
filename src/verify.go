@@ -154,6 +154,7 @@ func verifyRemovedTrendingLabelSuggestions(tx *sql.Tx) error {
 }
 
 func verifyRemovedBlogSubscriptions(tx *sql.Tx) error {
+	log.Info("[Verification] Verify removed blog subscriptions")
 	var num int
 	err := tx.QueryRow(`SELECT count(*) FROM blog.subscription`).Scan(&num)
 	if err != nil {
@@ -162,6 +163,38 @@ func verifyRemovedBlogSubscriptions(tx *sql.Tx) error {
 
 	if num != 0 {
 		return errors.New("[Verification] blog subscriptions not empty!")
+	}
+
+	return nil
+}
+
+func verifyRemovedPendingImageDescriptions(tx *sql.Tx) error {
+	log.Info("[Verification] Verify removed pending image descriptions")
+
+	var num int
+	err := tx.QueryRow(`SELECT count(*) FROM image_description WHERE state != 'unlocked'`).Scan(&num)
+	if err != nil {
+		return err
+	}
+
+	if num != 0 {
+		return errors.New("[Verification] image descriptions not empty!")
+	}
+
+	return nil
+}
+
+func verifyRemovedImageReports(tx *sql.Tx) error {
+	log.Info("[Verification] Verify removed image reports")
+
+	var num int
+	err := tx.QueryRow(`SELECT count(*) FROM image_report`).Scan(&num)
+	if err != nil {
+		return err
+	}
+
+	if num != 0 {
+		return errors.New("[Verification] image reports not empty!")
 	}
 
 	return nil
@@ -228,8 +261,8 @@ func handleVerificationError(tx *sql.Tx, path string, err error, tempFilesFolder
 
 
 func verify(path string, outputFolder string) {
-	extractedOutputFolder := outputFolder
-	err := extractArchive(path, outputFolder)
+	extractedOutputFolder := outputFolder + "/verify"
+	err := extractArchive(path, extractedOutputFolder)
 	if err != nil {
 		removeArchive(path)
 		log.Fatal("[Verification] Couldn't extract archive: ", err.Error())
@@ -238,17 +271,17 @@ func verify(path string, outputFolder string) {
 	dbDumpPath := extractedOutputFolder + "/" + "imagemonkey.sql"
 	err = loadDatabaseDump(dbDumpPath)
 	if err != nil {
+		log.Error("[Verification] Couldn't load database dump: ", err.Error())
 		removeArchive(path)
 		removeTempFiles(extractedOutputFolder)
-		log.Fatal("[Verification] Couldn't load database dump: ", err.Error())
 	}
 
 
 	tx, err := db.Begin()
 	if err != nil {
+		log.Error("[Verification] Couldn't start transaction: ", err.Error())
 		removeArchive(path)
 		removeTempFiles(extractedOutputFolder)
-		log.Fatal("[Verification] Couldn't start transaction: ", err.Error())
 	}
 
 	log.Info("[Verification] Starting verification")
@@ -284,6 +317,13 @@ func verify(path string, outputFolder string) {
 	if err := verifyRemovedBlogSubscriptions(tx); err != nil {
 		handleVerificationError(tx, path, err, extractedOutputFolder)
 	}
+	if err := verifyRemovedPendingImageDescriptions(tx); err != nil {
+		handleVerificationError(tx, path, err, extractedOutputFolder)
+	}
+	if err := verifyRemovedImageReports(tx); err != nil {
+		handleVerificationError(tx, path, err, extractedOutputFolder)
+	}
+	
 
 	/*if err := verifyChangedMonkeyUserPassword(tx); err != nil {
 		handleVerificationError(tx, path, err)
@@ -291,9 +331,9 @@ func verify(path string, outputFolder string) {
 
 	err = tx.Commit()
 	if err != nil {
+		log.Error("[Verification] Couldn't commit transaction: ", err.Error())
 		removeArchive(path)
 		removeTempFiles(extractedOutputFolder)
-		log.Fatal("[Verification] Couldn't commit transaction: ", err.Error())
 	}
 
 	log.Info("[Verification] Cleaning up temp files")

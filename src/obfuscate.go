@@ -122,6 +122,15 @@ func removeUnverifiedDonations(tx *sql.Tx) error {
 		return err
 	}
 
+	_, err = tx.Exec(`DELETE  
+							FROM image_description d
+							USING image i
+							WHERE i.id = d.image_id AND i.unlocked = false`)
+
+	if err != nil {
+		return err
+	}
+
 	_, err = tx.Exec(`DELETE FROM image WHERE unlocked = false`)
 
 	if err != nil {
@@ -171,6 +180,30 @@ func removeTrendingLabelSuggestions(tx *sql.Tx) error {
 	log.Info("[Obfuscation] Removing trending label suggestions")
 
 	_, err := tx.Exec(`DELETE FROM trending_label_suggestion`)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removePendingImageDescriptions(tx *sql.Tx) error {
+	log.Info("[Obfuscation] Removing pending image descriptions")
+
+	_, err := tx.Exec(`DELETE FROM image_description WHERE state != 'unlocked'`)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removeImageReports(tx *sql.Tx) error {
+	log.Info("[Obfuscation] Removing image reports")
+
+	_, err := tx.Exec(`DELETE FROM image_report`)
 
 	if err != nil {
 		return err
@@ -229,6 +262,12 @@ func obfuscate(tx *sql.Tx) {
 		handleObfuscationError(tx, err)
 	}
 	if err := removeBlogSubscriptions(tx); err != nil {
+		handleObfuscationError(tx, err)
+	}
+	if err := removePendingImageDescriptions(tx); err != nil {
+		handleObfuscationError(tx, err)
+	}
+	if err := removeImageReports(tx); err != nil {
 		handleObfuscationError(tx, err)
 	}
 	/*if err := changeMonkeyUserPassword(tx); err != nil {
