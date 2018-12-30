@@ -273,7 +273,7 @@ func removeTempFiles(outputFolder string) error {
 }
 
 func extractArchive(archivePath, outputFolder string) error {
-	return archiver.Zip.Open(archivePath, outputFolder)
+	return archiver.Zip.Unarchive(archivePath, outputFolder)
 }
 
 func handleVerificationError(tx *sql.Tx, path string, err error, tempFilesFolder string) {
