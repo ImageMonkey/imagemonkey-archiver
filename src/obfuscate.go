@@ -131,6 +131,14 @@ func removeUnverifiedDonations(tx *sql.Tx) error {
 		return err
 	}
 
+	_, err = tx.Exec(`DELETE
+							FROM image_collection_image c
+							USING image i
+							WHERE i.id = d.image_id AND i.unlocked = false`)
+	if err != nil {
+		return err
+	}
+
 	_, err = tx.Exec(`DELETE FROM image WHERE unlocked = false`)
 
 	if err != nil {
@@ -212,6 +220,19 @@ func removeImageReports(tx *sql.Tx) error {
 	return nil
 }
 
+func obfuscateImageCollections(tx *sql.Tx) error {
+	log.Info("[Obfuscation] Obfuscating image collections")
+
+	_, err := tx.Exec(`UPDATE user_image_collection
+						SET name = 'imagemonkey-collection-name-' || uuid_generate_v4(),
+						description = 'imagemonkey-collection-description-' || uuid_generate_v4()`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 /*func changeMonkeyUserPassword(tx *sql.Tx) error {
 	log.Info("[Obfuscation] Changing monkey password")
 
@@ -268,6 +289,9 @@ func obfuscate(tx *sql.Tx) {
 		handleObfuscationError(tx, err)
 	}
 	if err := removeImageReports(tx); err != nil {
+		handleObfuscationError(tx, err)
+	}
+	if err := obfuscateImageCollections(tx); err != nil {
 		handleObfuscationError(tx, err)
 	}
 	/*if err := changeMonkeyUserPassword(tx); err != nil {

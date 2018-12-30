@@ -26,7 +26,36 @@ func verifyObfuscatedUsernames(tx *sql.Tx) error {
 		}
 
 		if !strings.HasPrefix(username, "imagemonkey-user-") {
-			return errors.New("[Verification] Username not valid: ", )
+			return errors.New("[Verification] Username not valid")
+		}
+	}
+
+	return nil
+}
+
+func verifyObfuscatedImageCollections(tx *sql.Tx) error {
+	log.Info("[Verification] Verify obfuscated image collections")
+	rows, err := tx.Query(`SELECT name, description FROM user_image_collection`)
+	if err != nil {
+		return err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		var description string
+		err = rows.Scan(&name, &description)
+		if err != nil {
+			return err
+		}
+
+		if !strings.HasPrefix(name, "imagemonkey-collection-name-") {
+			return errors.New("[Verification] Image Collection name not valid")
+		}
+
+		if !strings.HasPrefix(description, "imagemonkey-collection-description-") {
+			return errors.New("[Verification] Image Collection Description not valid")
 		}
 	}
 
@@ -321,6 +350,9 @@ func verify(path string, outputFolder string) {
 		handleVerificationError(tx, path, err, extractedOutputFolder)
 	}
 	if err := verifyRemovedImageReports(tx); err != nil {
+		handleVerificationError(tx, path, err, extractedOutputFolder)
+	}
+	if err := verifyObfuscatedImageCollections(tx); err != nil {
 		handleVerificationError(tx, path, err, extractedOutputFolder)
 	}
 	
