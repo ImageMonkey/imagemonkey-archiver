@@ -89,7 +89,7 @@ func dumpDatabase(toPath string) error {
 
 func createArchive(donationsDir string, databaseDumpPath string, destination string) error {
 	log.Info("[Main] Creating archive: ", destination)
-	err := archiver.Zip.Archive([]string{databaseDumpPath, donationsDir}, destination)
+	err := archiver.Archive([]string{databaseDumpPath, donationsDir}, destination)
 	return err
 }
 
