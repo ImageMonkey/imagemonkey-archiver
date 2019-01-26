@@ -72,6 +72,12 @@ func removeUnverifiedDonations(tx *sql.Tx) error {
 	log.Info("[Obfuscation] Removing unverified donations")
 
 	_, err := tx.Exec(`DELETE  
+							FROM imagehunt_task`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE  
 							FROM image_validation v
 							USING image i
 							WHERE i.id = v.image_id AND i.unlocked = false`)
@@ -134,7 +140,7 @@ func removeUnverifiedDonations(tx *sql.Tx) error {
 	_, err = tx.Exec(`DELETE
 							FROM image_collection_image c
 							USING image i
-							WHERE i.id = d.image_id AND i.unlocked = false`)
+							WHERE i.id = c.image_id AND i.unlocked = false`)
 	if err != nil {
 		return err
 	}
