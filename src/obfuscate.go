@@ -70,7 +70,7 @@ func removeAccessTokens(tx *sql.Tx) error {
 
 func removeUnverifiedDonations(tx *sql.Tx) error {
 	log.Info("[Obfuscation] Removing unverified donations")
-
+	
 	_, err := tx.Exec(`DELETE  
 							FROM imagehunt_task`)
 	if err != nil {
@@ -101,6 +101,20 @@ func removeUnverifiedDonations(tx *sql.Tx) error {
 		return err
 	}
 
+	_, err = tx.Exec(`DELETE
+							FROM annotation_data d
+							WHERE d.image_annotation_revision_id IN (
+								SELECT image_annotation_revision_id 
+                                 FROM image_annotation_revision r
+                                 JOIN image_annotation a ON a.id = r.image_annotation_id
+                                 JOIN image i ON i.id = a.image_id
+                                 JOIN annotation_data d ON d.image_annotation_revision_id = r.id
+                                 WHERE i.unlocked = false
+							)`)
+	if err != nil {
+		return err
+	}
+
 	_, err = tx.Exec(`DELETE  
 							FROM annotation_data d
 							USING image_annotation a
@@ -116,6 +130,18 @@ func removeUnverifiedDonations(tx *sql.Tx) error {
 							JOIN image i ON i.id = a.image_id
 							WHERE a.id = u.image_annotation_id AND i.unlocked = false`)
 
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM image_annotation_revision r
+							WHERE r.id IN (
+								SELECT r.id 
+								FROM image_annotation_revision r
+								JOIN image_annotation a ON r.image_annotation_id = a.id
+								JOIN image i ON i.id = a.image_id
+								WHERE i.unlocked = false
+							)`)
 	if err != nil {
 		return err
 	}
