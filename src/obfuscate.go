@@ -171,6 +171,15 @@ func removeUnverifiedDonations(tx *sql.Tx) error {
 		return err
 	}
 
+
+	_, err = tx.Exec(`DELETE
+							FROM image_report r
+							USING image i
+							WHERE i.id = r.image_id AND i.unlocked = false`)
+	if err != nil {
+		return err
+	}
+
 	_, err = tx.Exec(`DELETE FROM image WHERE unlocked = false`)
 
 	if err != nil {
