@@ -171,15 +171,6 @@ func removeUnverifiedDonations(tx *sql.Tx) error {
 		return err
 	}
 
-
-	_, err = tx.Exec(`DELETE
-							FROM image_report r
-							USING image i
-							WHERE i.id = r.image_id AND i.unlocked = false`)
-	if err != nil {
-		return err
-	}
-
 	_, err = tx.Exec(`DELETE FROM image WHERE unlocked = false`)
 
 	if err != nil {
@@ -229,6 +220,18 @@ func removeTrendingLabelSuggestions(tx *sql.Tx) error {
 	log.Info("[Obfuscation] Removing trending label suggestions")
 
 	_, err := tx.Exec(`DELETE FROM trending_label_suggestion`)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removeTrendingLabelBotTasks(tx *sql.Tx) error {
+	log.Info("[Obfuscation] Removing trending label bot tasks")
+
+	_, err := tx.Exec(`DELETE FROM trending_label_bot_task`)
 
 	if err != nil {
 		return err
@@ -314,6 +317,12 @@ func obfuscate(tx *sql.Tx) {
 	if err := removeDonationsInQuarantine(tx); err != nil {
 		handleObfuscationError(tx, err)
 	}
+	if err := removeImageReports(tx); err != nil {
+		handleObfuscationError(tx, err)
+	}
+	if err := removeTrendingLabelBotTasks(tx); err != nil {
+		handleObfuscationError(tx, err)
+	}
 	if err := removeUnverifiedDonations(tx); err != nil {
 		handleObfuscationError(tx, err)
 	}
@@ -327,9 +336,6 @@ func obfuscate(tx *sql.Tx) {
 		handleObfuscationError(tx, err)
 	}
 	if err := removePendingImageDescriptions(tx); err != nil {
-		handleObfuscationError(tx, err)
-	}
-	if err := removeImageReports(tx); err != nil {
 		handleObfuscationError(tx, err)
 	}
 	if err := obfuscateImageCollections(tx); err != nil {

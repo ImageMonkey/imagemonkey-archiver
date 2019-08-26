@@ -77,6 +77,21 @@ func verifyRemovedEmailAddresses(tx *sql.Tx) error {
 	return nil
 }
 
+func verifyRemovedTrendingLabelBotTasks(tx *sql.Tx) error {
+	log.Info("[Verification] Verify removed trending label bot tasks")
+	var num int
+	err := tx.QueryRow(`SELECT COUNT(*) FROM trending_label_bot_task`).Scan(&num)
+	if err != nil {
+		return err
+	}
+
+	if num != 0 {
+		return errors.New("[Verification] trending label bot tasks not valid!")
+	}
+
+	return nil
+}
+
 func verifyRemovedHashedPasswords(tx *sql.Tx) error {
 	log.Info("[Verification] Verify removed hashed passwords")
 	var num int
@@ -355,7 +370,9 @@ func verify(path string, outputFolder string) {
 	if err := verifyObfuscatedImageCollections(tx); err != nil {
 		handleVerificationError(tx, path, err, extractedOutputFolder)
 	}
-	
+	if err := verifyRemovedTrendingLabelBotTasks(tx); err != nil {
+		handleVerificationError(tx, path, err, extractedOutputFolder)
+	}
 
 	/*if err := verifyChangedMonkeyUserPassword(tx); err != nil {
 		handleVerificationError(tx, path, err)
