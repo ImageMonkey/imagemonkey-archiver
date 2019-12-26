@@ -2,7 +2,7 @@ package main
 
 import (
 	"database/sql"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"os"
 )
 
@@ -170,6 +170,84 @@ func removeUnverifiedDonations(tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
+
+
+	_, err = tx.Exec(`DELETE FROM user_image_annotation_suggestion`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM image_annotation_suggestion_refinement`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM annotation_suggestion_data`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM image_annotation_suggestion_revision`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM image_annotation_suggestion_refinement_history`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM image_annotation_suggestion_history`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM image_annotation_suggestion`)
+	if err != nil {
+		return err
+	}
+
+	/*_, err = tx.Exec(`DELETE FROM user_image_annotation_suggestion WHERE image_annotation_suggestion_id IN (
+					  	SELECT s.id 
+							FROM image_annotation_suggestion s
+							JOIN image i ON i.id = s.image_id
+							WHERE i.unlocked = false
+					  )`)
+	if err != nil {
+		return err
+	}
+
+
+	_, err = tx.Exec(`DELETE FROM image_annotation_suggestion_refinement WHERE annotation_suggestion_data_id IN (
+						SELECT d.id
+							FROM annotation_suggestion_data d
+							JOIN image_annotation_suggestion s ON s.id = d.image_annotation_suggestion_id
+							JOIN image i ON i.id = s.image_id
+							WHERE i.unlocked = false
+					  )`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM annotation_suggestion_data WHERE image_annotation_suggestion_id IN (
+						SELECT s.id 
+							FROM image_annotation_suggestion s
+							JOIN image i ON i.id = s.image_id
+							WHERE i.unlocked = false
+					  )`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM image_annotation_suggestion WHERE id IN (
+					  	SELECT s.id
+							FROM image_annotation_suggestion s
+							JOIN image i ON i.id = s.image_id
+							WHERE i.unlocked = false
+					  )`)
+	if err != nil {
+		return err
+	}*/
 
 	_, err = tx.Exec(`DELETE FROM image WHERE unlocked = false`)
 

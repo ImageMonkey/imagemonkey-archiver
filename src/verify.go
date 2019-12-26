@@ -3,10 +3,12 @@ package main
 import (
 	"database/sql"
 	"github.com/mholt/archiver"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"errors"
 	"strings"
 	"os"
+	"time"
+	"fmt"
 )
 
 func verifyObfuscatedUsernames(tx *sql.Tx) error {
@@ -244,6 +246,70 @@ func verifyRemovedImageReports(tx *sql.Tx) error {
 	return nil
 }
 
+func verifyRemovedImageAnnotationSuggestions(tx *sql.Tx) error {
+	log.Info("[Verification] Verify removed image annotation suggestion")
+
+	var num int
+	err := tx.QueryRow(`SELECT count(*) FROM image_annotation_suggestion`).Scan(&num)
+	if err != nil {
+		return err
+	}
+
+	if num != 0 {
+		return errors.New("[Verification] image annotation suggestions not empty!")
+	}
+
+	return nil
+}
+
+func verifyRemovedAnnotationSuggestionData(tx *sql.Tx) error {
+	log.Info("[Verification] Verify removed annotation suggestion data")
+
+	var num int
+	err := tx.QueryRow(`SELECT count(*) FROM annotation_suggestion_data`).Scan(&num)
+	if err != nil {
+		return err
+	}
+
+	if num != 0 {
+		return errors.New("[Verification] annotation suggestion data not empty!")
+	}
+
+	return nil
+}
+
+func verifyRemovedImageAnnotationSuggestionRefinements(tx *sql.Tx) error {
+	log.Info("[Verification] Verify removed image annotation suggestion refinements")
+
+	var num int
+	err := tx.QueryRow(`SELECT count(*) FROM image_annotation_suggestion_refinement`).Scan(&num)
+	if err != nil {
+		return err
+	}
+
+	if num != 0 {
+		return errors.New("[Verification] image annotation suggestion refinements not empty!")
+	}
+
+	return nil
+}
+
+func verifyRemovedImageAnnotationSuggestionRevisions(tx *sql.Tx) error {
+	log.Info("[Verification] Verify removed image annotation suggestion revisions")
+
+	var num int
+	err := tx.QueryRow(`SELECT count(*) FROM image_annotation_suggestion_revision`).Scan(&num)
+	if err != nil {
+		return err
+	}
+
+	if num != 0 {
+		return errors.New("[Verification] image annotation suggestion revisions not empty!")
+	}
+
+	return nil
+}
+
 /*func verifyChangedMonkeyUserPassword(tx *sql.Tx) error {
 	var currentPasswordHash string
 	err := tx.QueryRow(`SELECT rolpassword FROM pg_authid WHERE rolname = 'monkey'`).Scan(&currentPasswordHash)
@@ -303,6 +369,23 @@ func handleVerificationError(tx *sql.Tx, path string, err error, tempFilesFolder
 	os.Exit(1)
 }
 
+func retry(attempts int, sleep time.Duration, f func() error) (err error) {
+	for i := 0; ; i++ {
+		err = f()
+		if err == nil {
+			return
+		}
+
+		if i >= (attempts - 1) {
+			break
+		}
+
+		time.Sleep(sleep)
+
+		log.Info("retrying after error:", err)
+	}
+	return fmt.Errorf("after %d attempts, last error: %s", attempts, err)
+}
 
 func verify(path string, outputFolder string) {
 	extractedOutputFolder := outputFolder + "/verify"
@@ -318,14 +401,21 @@ func verify(path string, outputFolder string) {
 		log.Error("[Verification] Couldn't load database dump: ", err.Error())
 		removeArchive(path)
 		removeTempFiles(extractedOutputFolder)
+		return
 	}
 
 
-	tx, err := db.Begin()
+	
+	var tx *sql.Tx
+	err = retry(5, 10*time.Second, func() (err error) {
+		tx, err = db.Begin()
+		return
+	})
 	if err != nil {
 		log.Error("[Verification] Couldn't start transaction: ", err.Error())
 		removeArchive(path)
 		removeTempFiles(extractedOutputFolder)
+		return
 	}
 
 	log.Info("[Verification] Starting verification")
@@ -373,6 +463,18 @@ func verify(path string, outputFolder string) {
 	if err := verifyRemovedTrendingLabelBotTasks(tx); err != nil {
 		handleVerificationError(tx, path, err, extractedOutputFolder)
 	}
+	if err := verifyRemovedImageAnnotationSuggestions(tx); err != nil {
+		handleVerificationError(tx, path, err, extractedOutputFolder)
+	}
+	if err := verifyRemovedAnnotationSuggestionData(tx); err != nil {
+		handleVerificationError(tx, path, err, extractedOutputFolder)
+	}
+	if err := verifyRemovedImageAnnotationSuggestionRefinements(tx); err != nil {
+		handleVerificationError(tx, path, err, extractedOutputFolder)
+	}
+	if err := verifyRemovedImageAnnotationSuggestionRevisions(tx); err != nil {
+		handleVerificationError(tx, path, err, extractedOutputFolder)
+	}
 
 	/*if err := verifyChangedMonkeyUserPassword(tx); err != nil {
 		handleVerificationError(tx, path, err)
@@ -383,6 +485,7 @@ func verify(path string, outputFolder string) {
 		log.Error("[Verification] Couldn't commit transaction: ", err.Error())
 		removeArchive(path)
 		removeTempFiles(extractedOutputFolder)
+		return
 	}
 
 	log.Info("[Verification] Cleaning up temp files")
