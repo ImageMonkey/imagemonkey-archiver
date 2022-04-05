@@ -1,4 +1,4 @@
-FROM golang:1.13-buster
+FROM golang:1.17-buster
 
 # when changing the base image, change also the debian version here
 ARG DEBIAN_VERSION=buster
